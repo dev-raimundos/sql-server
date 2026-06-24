@@ -1,0 +1,67 @@
+name: sqlserver
+
+services:
+  sqlserver:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: local/sqlserver:2022-CU16
+    container_name: sqlserver
+    hostname: sqlserver
+    restart: unless-stopped
+
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: ${SA_PASSWORD}
+      MSSQL_PID: Developer
+      TZ: ${TZ:-America/Sao_Paulo}
+      APP_DB_NAME: ${APP_DB_NAME:-AppDatabase}
+      APP_DB_USER: ${APP_DB_USER:-appuser}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD}
+
+    ports:
+      - "${SQL_PORT:-1433}:1433"
+
+    volumes:
+      - sqlserver-system:/var/opt/mssql
+      - ./data:/data
+      - ./config/mssql.conf:/var/opt/mssql/mssql.conf:ro
+      - ./init:/docker-entrypoint-initdb.d:ro
+
+    networks:
+      - coolify
+
+    deploy:
+      resources:
+        limits:
+          memory: 6g
+        reservations:
+          memory: 1g
+
+    healthcheck:
+      test:
+        - "CMD-SHELL"
+        - |
+          /opt/mssql-tools18/bin/sqlcmd \
+            -S localhost -U sa -P "$$MSSQL_SA_PASSWORD" \
+            -Q "SELECT 1" -C -N d -l 10 > /dev/null 2>&1
+      interval: 30s
+      timeout: 15s
+      retries: 6
+      start_period: 90s
+
+    security_opt:
+      - no-new-privileges:true
+
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+
+volumes:
+  sqlserver-system:
+    driver: local
+
+networks:
+  coolify:
+    external: true
