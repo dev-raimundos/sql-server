@@ -15,6 +15,12 @@ services:
       MSSQL_SA_PASSWORD: ${SA_PASSWORD}
       MSSQL_PID: Developer
       TZ: ${TZ:-America/Sao_Paulo}
+      MSSQL_AGENT_ENABLED: "true"
+      MSSQL_MEMORY_LIMIT_MB: "5632"
+      MSSQL_DATA_DIR: /data/db
+      MSSQL_LOG_DIR: /data/log
+      MSSQL_BACKUP_DIR: /data/backup
+      MSSQL_DUMP_DIR: /data/dump
       APP_DB_NAME: ${APP_DB_NAME:-AppDatabase}
       APP_DB_USER: ${APP_DB_USER:-appuser}
       APP_DB_PASSWORD: ${APP_DB_PASSWORD}
@@ -25,7 +31,6 @@ services:
     volumes:
       - sqlserver-system:/var/opt/mssql
       - ./data:/data
-      - ./config/mssql.conf:/var/opt/mssql/mssql.conf:ro
       - ./init:/docker-entrypoint-initdb.d:ro
 
     networks:
