@@ -9,6 +9,4 @@ RUN mkdir -p /data/db /data/log /data/backup /data/dump \
 COPY --chown=root:root scripts/entrypoint.sh /usr/local/bin/custom-entrypoint.sh
 RUN chmod +x /usr/local/bin/custom-entrypoint.sh
 
-USER mssql
-
 ENTRYPOINT ["/usr/local/bin/custom-entrypoint.sh"]
