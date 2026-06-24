@@ -11,8 +11,8 @@ services:
       ACCEPT_EULA: "Y"
       MSSQL_SA_PASSWORD: ${SA_PASSWORD}
       MSSQL_PID: Developer
-      MSSQL_AGENT_ENABLED: "true"
-      MSSQL_MEMORY_LIMIT_MB: "5632"
+      MSSQL_AGENT_ENABLED: "false"
+      MSSQL_MEMORY_LIMIT_MB: "4096"
       TZ: ${TZ:-America/Sao_Paulo}
 
     ports:
