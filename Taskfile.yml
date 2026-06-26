@@ -1,0 +1,100 @@
+version: "3"
+
+dotenv:
+  - .env
+
+vars:
+  CONTAINER: sqlserver
+  SQLCMD: /opt/mssql-tools18/bin/sqlcmd
+  BACKUP_DIR: /var/opt/mssql/backup
+
+tasks:
+  up:
+    desc: Sobe o SQL Server em background
+    cmds:
+      - docker compose up -d
+
+  down:
+    desc: Para e remove os containers (mantém volume)
+    cmds:
+      - docker compose down
+
+  stop:
+    desc: Para os containers sem remover
+    cmds:
+      - docker compose stop
+
+  restart:
+    desc: Reinicia o container
+    cmds:
+      - docker compose restart
+
+  status:
+    desc: Exibe status dos containers
+    cmds:
+      - docker compose ps
+
+  logs:
+    desc: Acompanha logs em tempo real
+    cmds:
+      - docker compose logs -f
+
+  shell:
+    desc: Abre bash dentro do container
+    cmds:
+      - docker exec -it {{.CONTAINER}} bash
+
+  connect:
+    desc: Conecta ao SQL Server via sqlcmd (usuário sa)
+    cmds:
+      - docker exec -it {{.CONTAINER}} {{.SQLCMD}} -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -C
+
+  query:
+    desc: Executa uma query avulsa (ex. task query -- "SELECT @@VERSION")
+    cmds:
+      - docker exec -i {{.CONTAINER}} {{.SQLCMD}} -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -C -Q "{{.CLI_ARGS}}"
+
+  databases:
+    desc: Lista todos os bancos de dados
+    cmds:
+      - docker exec -i {{.CONTAINER}} {{.SQLCMD}} -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -C -Q "SELECT name, state_desc FROM sys.databases ORDER BY name"
+
+  backup:
+    desc: Faz backup de um banco (ex. task backup -- MinhaDB)
+    vars:
+      DB: "{{.CLI_ARGS}}"
+      FILE: "{{.BACKUP_DIR}}/{{.CLI_ARGS}}_{{now | date \"20060102_150405\"}}.bak"
+    cmds:
+      - docker exec -i {{.CONTAINER}} mkdir -p {{.BACKUP_DIR}}
+      - |
+        docker exec -i {{.CONTAINER}} {{.SQLCMD}} -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -C -Q \
+          "BACKUP DATABASE [{{.DB}}] TO DISK = N'{{.FILE}}' WITH FORMAT, COMPRESSION, STATS = 10"
+      - echo "Backup salvo em {{.FILE}} dentro do container"
+
+  restore:
+    desc: Restaura um backup (ex. task restore -- MinhaDB /var/opt/mssql/backup/arquivo.bak)
+    vars:
+      DB: "{{index (splitArgs .CLI_ARGS) 0}}"
+      FILE: "{{index (splitArgs .CLI_ARGS) 1}}"
+    cmds:
+      - |
+        docker exec -i {{.CONTAINER}} {{.SQLCMD}} -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -C -Q \
+          "RESTORE DATABASE [{{.DB}}] FROM DISK = N'{{.FILE}}' WITH REPLACE, STATS = 10"
+
+  export-backup:
+    desc: Copia um arquivo de backup do container para ./data (ex. task export-backup -- arquivo.bak)
+    cmds:
+      - docker cp {{.CONTAINER}}:{{.BACKUP_DIR}}/{{.CLI_ARGS}} ./data/{{.CLI_ARGS}}
+      - echo "Backup copiado para ./data/{{.CLI_ARGS}}"
+
+  import-backup:
+    desc: Copia um arquivo de backup de ./data para o container (ex. task import-backup -- arquivo.bak)
+    cmds:
+      - docker cp ./data/{{.CLI_ARGS}} {{.CONTAINER}}:{{.BACKUP_DIR}}/{{.CLI_ARGS}}
+      - echo "Arquivo copiado para {{.BACKUP_DIR}}/{{.CLI_ARGS}} no container"
+
+  reset:
+    desc: "DANGER: destrói container e volume de dados"
+    prompt: Isso apaga todos os dados do SQL Server. Confirma?
+    cmds:
+      - docker compose down -v
