@@ -12,7 +12,7 @@ services:
       MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD}
       MSSQL_PID: ${MSSQL_PID}
     volumes:
-      - sqlserver_data:/var/opt/mssql
+      - /home/docker-data/sqlserver:/var/opt/mssql
     networks:
       - home-network
     deploy:
