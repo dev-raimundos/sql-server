@@ -22,9 +22,6 @@ services:
         reservations:
           memory: 512m
 
-volumes:
-  sqlserver_data:
-
 networks:
   home-network:
     external: true
