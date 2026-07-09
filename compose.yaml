@@ -37,9 +37,11 @@ services:
     deploy:
       resources:
         limits:
-          memory: 8g
+          cpus: "3.0"
+          memory: 5g
         reservations:
-          memory: 512m
+          cpus: "1.0"
+          memory: 1g
 
 networks:
   home-network:
