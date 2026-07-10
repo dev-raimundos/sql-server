@@ -1,6 +1,9 @@
 services:
   sqlserver:
-    image: mcr.microsoft.com/mssql/server:2022-CU25-ubuntu-22.04
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: sqlserver-homelab:2022-CU25-healthcheck
     container_name: sqlserver
     restart: unless-stopped
     ports:
@@ -11,6 +14,8 @@ services:
       ACCEPT_EULA: ${ACCEPT_EULA}
       MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD}
       MSSQL_PID: ${MSSQL_PID}
+      HEALTHCHECK_USER: ${HEALTHCHECK_USER:-healthcheck_user}
+      HEALTHCHECK_PASSWORD: ${HEALTHCHECK_PASSWORD}
     volumes:
       - /home/docker-data/sqlserver:/var/opt/mssql
     networks:
@@ -23,7 +28,7 @@ services:
           "-S",
           "localhost",
           "-U",
-          "healthcheck_user",
+          "${HEALTHCHECK_USER:-healthcheck_user}",
           "-P",
           "${HEALTHCHECK_PASSWORD}",
           "-C",

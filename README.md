@@ -55,6 +55,20 @@ A tag `2022-latest` avança automaticamente a cada Cumulative Update lançado pe
 
 Para atualizar: substituir `CU25` pelo número do CU desejado no `compose.yaml`.
 
+### Criação automática do usuário de healthcheck
+
+O healthcheck do `compose.yaml` conecta com um usuário próprio (`healthcheck_user`), não com `sa`, para não expor a senha administrativa a uma rotina que só faz `SELECT 1`. O problema: esse usuário só existe depois que o banco cria — e o banco só existe depois que o container sobe pela primeira vez. Se o healthcheck começar a rodar antes disso, ele falha, o container fica `unhealthy` e cai antes de ter chance de criar o próprio usuário que precisa.
+
+A solução é um `Dockerfile` que substitui o entrypoint padrão da imagem por [`docker/entrypoint.sh`](docker/entrypoint.sh): ele sobe o `sqlservr` normalmente e, em paralelo, dispara [`docker/create-healthcheck-user.sh`](docker/create-healthcheck-user.sh), que:
+
+1. Espera o SQL Server aceitar conexões (poll com `sqlcmd`, até 90s).
+2. Cria o login `HEALTHCHECK_USER` (se não existir) ou sincroniza a senha (se já existir) via [`docker/create-healthcheck-user.sql`](docker/create-healthcheck-user.sql).
+3. Concede apenas `CONNECT SQL` — o mínimo necessário pra rodar `SELECT 1`, sem acesso a nenhum banco.
+
+Isso roda em todo start do container (não só no primeiro), então também cobre o caso de rotacionar `HEALTHCHECK_PASSWORD` no `.env` — na próxima subida a senha do login é atualizada.
+
+> Evite aspas simples (`'`) em `HEALTHCHECK_PASSWORD` — a substituição de variáveis do `sqlcmd -v` não escapa esse caractere.
+
 ### Named volume ao invés de bind mount
 
 Os dados ficam em um named volume gerenciado pelo Docker (`sqlserver_data`) em vez de uma pasta local mapeada. Named volumes têm melhor performance em Linux e evitam problemas de permissão — o SQL Server dentro do container roda com um usuário não-root específico que pode não ter acesso a pastas do host.
@@ -76,6 +90,11 @@ As operações mais comuns (conectar, fazer backup, restaurar, exportar arquivos
 ```
 .
 ├── compose.yaml      # definição do serviço
+├── Dockerfile         # customiza a imagem oficial com o entrypoint abaixo
+├── docker/
+│   ├── entrypoint.sh                  # sobe o sqlservr + dispara a criação do usuário de healthcheck
+│   ├── create-healthcheck-user.sh     # espera o banco ficar pronto e roda o script SQL
+│   └── create-healthcheck-user.sql    # cria/sincroniza o login de healthcheck
 ├── Taskfile.yml      # automação de operações comuns
 ├── .env              # credenciais (não versionar)
 ├── .env.example      # modelo sem valores reais (pode versionar)
