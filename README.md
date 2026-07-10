@@ -67,6 +67,15 @@ A solução é um `Dockerfile` que substitui o entrypoint padrão da imagem por 
 
 Isso roda em todo start do container (não só no primeiro), então também cobre o caso de rotacionar `HEALTHCHECK_PASSWORD` no `.env` — na próxima subida a senha do login é atualizada.
 
+#### Recriando o volume de dados do zero
+
+O processo do SQL Server dentro do container roda como o usuário `mssql` (UID `10001`), não como `root`. Se `/home/docker-data/sqlserver` for apagado e recriado no host, a pasta volta a pertencer a `root` e o `sqlservr` falha ao iniciar com `Permission denied` ao tentar criar seus próprios arquivos internos. Antes de subir o container com um volume novo, ajuste a posse da pasta no host:
+
+```bash
+sudo mkdir -p /home/docker-data/sqlserver
+sudo chown -R 10001:0 /home/docker-data/sqlserver
+```
+
 > Evite aspas simples (`'`) em `HEALTHCHECK_PASSWORD` — a substituição de variáveis do `sqlcmd -v` não escapa esse caractere.
 
 ### Named volume ao invés de bind mount
