@@ -39,14 +39,6 @@ services:
       timeout: 5s
       retries: 10
       start_period: 30s
-    deploy:
-      resources:
-        limits:
-          cpus: "3.0"
-          memory: 5g
-        reservations:
-          cpus: "1.0"
-          memory: 1g
 
 networks:
   home-network:
