@@ -7,7 +7,7 @@ services:
     container_name: sqlserver
     restart: unless-stopped
     ports:
-      - "127.0.0.1:1433:1433"
+      - "${HOST_IP}:1433:1433"
     env_file:
       - .env
     environment:
