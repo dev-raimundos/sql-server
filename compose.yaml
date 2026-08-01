@@ -14,6 +14,8 @@ services:
       ACCEPT_EULA: ${ACCEPT_EULA}
       MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD}
       MSSQL_PID: ${MSSQL_PID}
+      MSSQL_AGENT_ENABLED: "false"
+      MSSQL_MEMORY_LIMIT_MB: "2048"
       HEALTHCHECK_USER: ${HEALTHCHECK_USER:-healthcheck_user}
       HEALTHCHECK_PASSWORD: ${HEALTHCHECK_PASSWORD}
     volumes:
@@ -39,6 +41,13 @@ services:
       timeout: 5s
       retries: 10
       start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: "3.0"
+          memory: 2560M
+        reservations:
+          memory: 512M
 
 networks:
   home-network:

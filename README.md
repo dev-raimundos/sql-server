@@ -27,7 +27,7 @@ Cliente SQL
 ┌─────────────────────────────┐
 │       SQL Server 2022       │  ← Developer Edition
 │                             │
-│  /var/opt/mssql             │  ← dados persistidos em named volume
+│  /var/opt/mssql             │  ← dados persistidos via bind mount (host)
 └─────────────────────────────┘
 ```
 
@@ -37,17 +37,22 @@ O SQL Server expõe apenas a porta `1433` (protocolo TDS). O Nginx Proxy Manager
 
 ## Engenharia das decisões
 
-### Limite de 6 GB de RAM (`deploy.resources`)
+### Limites de recursos (`deploy.resources`)
 
-O SQL Server, por padrão, não impõe limite interno de memória — ele consome o máximo disponível no host à medida que recebe carga. Em um servidor compartilhado com outros serviços, isso pode derrubar o sistema inteiro.
+O SQL Server, por padrão, não impõe limite interno de memória — ele consome o máximo disponível no host à medida que recebe carga. Este host tem só 4 GB de RAM e também roda o Nginx Proxy Manager, então isso pode derrubar o sistema inteiro.
 
-O limite de 6 GB é um teto no nível do Docker (cgroups), aplicado independentemente do que o SQL Server tenta alocar:
+O limite é aplicado em duas camadas complementares:
 
-| Container | RAM limit | RAM reservation |
+| Camada | Valor | O que faz |
 |-----------|-----------|-----------------|
-| SQL Server | 6 GB | 512 MB |
+| `deploy.resources.limits.memory` (cgroup, Docker) | 2560 MB | Teto rígido. Se ultrapassado, o kernel mata o processo na hora (OOM-kill), sem checkpoint gracioso. |
+| `MSSQL_MEMORY_LIMIT_MB` (motor do SQL Server) | 2048 MB | Teto interno, cobrindo todo o processo (buffer pool, SQLPAL, etc). O motor reage bem antes do limite do cgroup, liberando cache de forma gradual em vez de ser morto abruptamente. |
+| `deploy.resources.limits.cpus` (cgroup, Docker) | 3.0 | Deixa 1 das 4 threads lógicas do i3-3220T livre para o NPM e o SO. |
+| `deploy.resources.reservations.memory` | 512 MB | Soft-limit real (`HostConfig.MemoryReservation`) — o kernel usa isso para decidir de quem tirar memória primeiro sob pressão do host. |
 
-A reservation garante que o container sempre tenha 512 MB disponíveis mesmo sob pressão de memória no host.
+A folga de ~20% entre `MSSQL_MEMORY_LIMIT_MB` (2048) e o limite do cgroup (2560) segue a recomendação da Microsoft, dando ao motor espaço para reagir antes do OOM-kill.
+
+> **Atenção:** `deploy.resources.reservations.cpus` **não tem efeito nenhum** rodando via `docker compose up` sem Swarm (não mapeia para nenhuma configuração real do container) — por isso não está no compose. Já `reservations.memory` tem efeito real mesmo fora do Swarm. Testado empiricamente com `docker inspect --format '{{.HostConfig.MemoryReservation}}'`.
 
 ### Imagem fixada por versão (`2022-CU25-ubuntu-22.04`)
 
@@ -78,11 +83,15 @@ sudo chown -R 10001:0 /home/docker-data/sqlserver
 
 > Evite aspas simples (`'`) em `HEALTHCHECK_PASSWORD` — a substituição de variáveis do `sqlcmd -v` não escapa esse caractere.
 
-### Named volume ao invés de bind mount
+### Bind mount ao invés de named volume
 
-Os dados ficam em um named volume gerenciado pelo Docker (`sqlserver_data`) em vez de uma pasta local mapeada. Named volumes têm melhor performance em Linux e evitam problemas de permissão — o SQL Server dentro do container roda com um usuário não-root específico que pode não ter acesso a pastas do host.
+Os dados ficam em uma pasta do host (`/home/docker-data/sqlserver`) mapeada diretamente para `/var/opt/mssql`, em vez de um named volume gerenciado pelo Docker. Isso dá visibilidade e acesso direto no host para ferramentas externas de backup/monitoramento, e deixa explícito em qual disco/partição os dados residem. O trade-off é ter que gerenciar manualmente a posse da pasta (usuário `mssql`, UID `10001`) — ver a subseção "Recriando o volume de dados do zero" acima.
 
 A pasta `./data` no repositório existe como ponto de transferência manual para arquivos de backup (via `task export-backup` / `task import-backup`), não como volume de dados principal.
+
+### SQL Server Agent desabilitado
+
+`MSSQL_AGENT_ENABLED: "false"` está fixo no `compose.yaml` — o Agent não é usado neste setup, e desligá-lo economiza memória/CPU no host limitado.
 
 ### Variáveis de ambiente via `.env`
 
