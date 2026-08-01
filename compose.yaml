@@ -11,6 +11,7 @@ services:
     env_file:
       - .env
     environment:
+      TZ: America/Belem
       ACCEPT_EULA: ${ACCEPT_EULA}
       MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD}
       MSSQL_PID: ${MSSQL_PID}
