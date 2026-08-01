@@ -89,9 +89,9 @@ Os dados ficam em uma pasta do host (`/home/docker-data/sqlserver`) mapeada dire
 
 A pasta `./data` no repositório existe como ponto de transferência manual para arquivos de backup (via `task export-backup` / `task import-backup`), não como volume de dados principal.
 
-### SQL Server Agent desabilitado
+### SQL Server Agent habilitado
 
-`MSSQL_AGENT_ENABLED: "false"` está fixo no `compose.yaml` — o Agent não é usado neste setup, e desligá-lo economiza memória/CPU no host limitado.
+`MSSQL_AGENT_ENABLED: "true"` no `compose.yaml` — o Agent está ativo para execução de jobs agendados. O overhead ocioso é baixo (~20-50 MB de RAM), mas o consumo real depende do que os jobs configurados fazem.
 
 ### Variáveis de ambiente via `.env`
 
