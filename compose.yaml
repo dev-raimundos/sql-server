@@ -16,7 +16,7 @@ services:
       MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD}
       MSSQL_PID: ${MSSQL_PID}
       MSSQL_AGENT_ENABLED: "true"
-      MSSQL_MEMORY_LIMIT_MB: "10240"
+      MSSQL_MEMORY_LIMIT_MB: "8192"
       HEALTHCHECK_USER: ${HEALTHCHECK_USER:-healthcheck_user}
       HEALTHCHECK_PASSWORD: ${HEALTHCHECK_PASSWORD}
     volumes:
@@ -46,7 +46,7 @@ services:
       resources:
         limits:
           cpus: "3.0"
-          memory: 12288M
+          memory: 10240M
         reservations:
           memory: 2048M
 
