@@ -39,18 +39,18 @@ O SQL Server expõe apenas a porta `1433` (protocolo TDS). O Nginx Proxy Manager
 
 ### Limites de recursos (`deploy.resources`)
 
-O SQL Server, por padrão, não impõe limite interno de memória — ele consome o máximo disponível no host à medida que recebe carga. Este host tem só 4 GB de RAM e também roda o Nginx Proxy Manager, então isso pode derrubar o sistema inteiro.
+O SQL Server, por padrão, não impõe limite interno de memória — ele consome o máximo disponível no host à medida que recebe carga. Este host tem 16 GB de RAM e também roda o Nginx Proxy Manager, então isso pode derrubar o sistema inteiro.
 
 O limite é aplicado em duas camadas complementares:
 
 | Camada | Valor | O que faz |
 |-----------|-----------|-----------------|
-| `deploy.resources.limits.memory` (cgroup, Docker) | 2560 MB | Teto rígido. Se ultrapassado, o kernel mata o processo na hora (OOM-kill), sem checkpoint gracioso. |
-| `MSSQL_MEMORY_LIMIT_MB` (motor do SQL Server) | 2048 MB | Teto interno, cobrindo todo o processo (buffer pool, SQLPAL, etc). O motor reage bem antes do limite do cgroup, liberando cache de forma gradual em vez de ser morto abruptamente. |
+| `deploy.resources.limits.memory` (cgroup, Docker) | 12288 MB | Teto rígido. Se ultrapassado, o kernel mata o processo na hora (OOM-kill), sem checkpoint gracioso. |
+| `MSSQL_MEMORY_LIMIT_MB` (motor do SQL Server) | 10240 MB | Teto interno, cobrindo todo o processo (buffer pool, SQLPAL, etc). O motor reage bem antes do limite do cgroup, liberando cache de forma gradual em vez de ser morto abruptamente. |
 | `deploy.resources.limits.cpus` (cgroup, Docker) | 3.0 | Deixa 1 das 4 threads lógicas do i3-3220T livre para o NPM e o SO. |
-| `deploy.resources.reservations.memory` | 512 MB | Soft-limit real (`HostConfig.MemoryReservation`) — o kernel usa isso para decidir de quem tirar memória primeiro sob pressão do host. |
+| `deploy.resources.reservations.memory` | 2048 MB | Soft-limit real (`HostConfig.MemoryReservation`) — o kernel usa isso para decidir de quem tirar memória primeiro sob pressão do host. |
 
-A folga de ~20% entre `MSSQL_MEMORY_LIMIT_MB` (2048) e o limite do cgroup (2560) segue a recomendação da Microsoft, dando ao motor espaço para reagir antes do OOM-kill.
+A folga de ~20% entre `MSSQL_MEMORY_LIMIT_MB` (10240) e o limite do cgroup (12288) segue a recomendação da Microsoft, dando ao motor espaço para reagir antes do OOM-kill. Os 4 GB restantes fora do container ficam para o SO e o Nginx Proxy Manager.
 
 > **Atenção:** `deploy.resources.reservations.cpus` **não tem efeito nenhum** rodando via `docker compose up` sem Swarm (não mapeia para nenhuma configuração real do container) — por isso não está no compose. Já `reservations.memory` tem efeito real mesmo fora do Swarm. Testado empiricamente com `docker inspect --format '{{.HostConfig.MemoryReservation}}'`.
 
