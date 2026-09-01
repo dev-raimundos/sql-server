@@ -20,7 +20,7 @@ services:
       HEALTHCHECK_USER: ${HEALTHCHECK_USER:-healthcheck_user}
       HEALTHCHECK_PASSWORD: ${HEALTHCHECK_PASSWORD}
     volumes:
-      - /home/docker-data/sqlserver:/var/opt/mssql
+      - mssql-data:/var/opt/mssql
     networks:
       - home-network
     healthcheck:
@@ -53,3 +53,11 @@ services:
 networks:
   home-network:
     external: true
+
+volumes:
+  mssql-data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /home/docker-data/sqlserver
